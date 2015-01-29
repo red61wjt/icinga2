@@ -119,10 +119,20 @@ void GraphiteWriter::CheckResultHandler(const Checkable::Ptr& checkable, const C
 	if (service) {
 		prefix = MacroProcessor::ResolveMacros(GetServiceNameTemplate(), resolvers, cr, NULL, &GraphiteWriter::EscapeMacroMetric);
 
+		SendMetric(prefix, "state", service->GetState());
 	} else {
 		prefix = MacroProcessor::ResolveMacros(GetHostNameTemplate(), resolvers, cr, NULL, &GraphiteWriter::EscapeMacroMetric);
+
+		SendMetric(prefix, "state", host->GetState());
 	}
 
+	SendMetric(prefix, "current_attempt", checkable->GetCheckAttempt());
+	SendMetric(prefix, "max_check_attempts", checkable->GetMaxCheckAttempts());
+	SendMetric(prefix, "state_type", checkable->GetStateType());
+	SendMetric(prefix, "reachable", checkable->IsReachable());
+	SendMetric(prefix, "downtime_depth", checkable->GetDowntimeDepth());
+	SendMetric(prefix, "latency", Service::CalculateLatency(cr));
+	SendMetric(prefix, "execution_time", Service::CalculateExecutionTime(cr));
 	SendPerfdata(prefix, cr);
 }
 
@@ -153,6 +163,15 @@ void GraphiteWriter::SendPerfdata(const String& prefix, const CheckResult::Ptr& 
 		boost::algorithm::replace_all(escaped_key, "::", ".");
 
 		SendMetric(prefix, escaped_key, pdv->GetValue());
+
+		if (pdv->GetCrit())
+			SendMetric(prefix, escaped_key + "_crit", pdv->GetCrit());
+		if (pdv->GetWarn())
+			SendMetric(prefix, escaped_key + "_warn", pdv->GetWarn());
+		if (pdv->GetMin())
+			SendMetric(prefix, escaped_key + "_min", pdv->GetMin());
+		if (pdv->GetMax())
+			SendMetric(prefix, escaped_key + "_max", pdv->GetMax());
 	}
 }
 
